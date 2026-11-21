@@ -7,7 +7,7 @@
 | view | seen from | orientation | size must match |
 |---|---|---|---|
 | top | straight above | front pointing **down** | length = side view's length, width = front view's width |
-| side | the object's right side | front pointing **left** | height = front view's height |
+| side | one side | front pointing **left** | height = front view's height |
 | front | the front | as drawn | |
 | back (optional) | behind | as drawn (it is mirrored for you) | |
 | side2 (optional) | the other side | as drawn, front pointing **right** | same as side |
