@@ -1,0 +1,35 @@
+{
+  "skill_name": "sprite-in-the-round",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I took a screenshot of my potion sprite in my pixel editor (evals/files/editor_shot.png). It's 64x64. Can you turn it into a 3D thing I can spin around?",
+      "expected_output": "Recovers the 64x64 art from the 800x546 screenshot (about 6.84 screen px per art px; ignores the UI and checkerboard) instead of stacking the screenshot. Builds a round volume about 57 slices tall (lathe or equivalent) with the outline stripped and redrawn once; the label and highlight stay on the front or the back is repainted. Delivers a static GLB and preview, and says which method was used and what was invented.",
+      "files": ["evals/files/editor_shot.png"]
+    },
+    {
+      "id": 2,
+      "prompt": "here are the top and side views of my little car (evals/files/car_top.png, evals/files/car_side.png). i need 16 direction sprites for my top down racer in godot",
+      "expected_output": "Notices car_top.png is a 4x upscale (12x18 art) while car_side.png is native (18x8), and brings both to native size. Carves the volume from top + side, with the cabin over the right end. Writes a 16-direction sheet (frame 0 faces right, clockwise) plus the slice sheet, and explains how to pick the frame from velocity in Godot.",
+      "files": ["evals/files/car_top.png", "evals/files/car_side.png"]
+    },
+    {
+      "id": 3,
+      "prompt": "make this mushroom guy 3d (evals/files/mushroom.png)",
+      "expected_output": "Uses the 16x16 art as is. Picks lathe or inflate with a stated reason; the face does not appear on the back; the cap top is sensibly coloured. The preview shows a solid stack at all 8 angles, and a coloured GLB of the character opens upright in a 3D importer.",
+      "files": ["evals/files/mushroom.png"]
+    },
+    {
+      "id": 4,
+      "prompt": "Can you make me a sprite-stacked wooden treasure chest, about 24 px wide, for my top-down game? I don't have any art.",
+      "expected_output": "Designs the chest from primitives or self-drawn views: body, lid, metal bands, a lock on the front only, small flat palette. Writes a slice sheet (ground slice left, front facing +y), checks the preview and reports the size and slice count.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "I need a street lamp for my top-down sprite-stacking game, about 40 px tall, and the same lamp as an .obj for Blender. No art, just make it look nice.",
+      "expected_output": "Designs the lamp from primitives or self-drawn views with a pole at least 2 px thick (or thickens it after stack.py warns about a 1-px-thin part), and keeps the base centred under the head so the stack doesn't orbit off-axis. Delivers the slice sheet for the game plus the GLB and the OBJ with its .mtl and palette PNG, checks the preview, and reports the size and slice count.",
+      "files": []
+    }
+  ]
+}

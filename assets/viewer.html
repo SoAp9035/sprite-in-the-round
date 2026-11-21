@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sprite in the Round</title>
+<style>
+  :root{--bg:#e9e5dd;--ui:#ffffffea;--bd:#d4d8e0;--fg:#181c24;--mut:#647082}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font:12px/1.4 system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg)}
+  body{display:grid;grid-template-rows:auto 1fr auto}
+  header,footer{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 14px;background:var(--ui);border-color:var(--bd);border-style:solid;border-width:0}
+  header{border-bottom-width:1px;justify-content:space-between}
+  footer{border-top-width:1px}
+  .grp{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+  .title{font-weight:600;font-size:13px}.meta{font:11px/1 ui-monospace,Menlo,monospace;color:var(--mut)}
+  button,label.btn{appearance:none;border:1px solid var(--bd);background:#fff;color:var(--fg);padding:4px 9px;border-radius:4px;font:inherit;cursor:pointer;user-select:none}
+  button:hover,label.btn:hover{background:#f3f5f8}
+  button[aria-pressed="true"]{background:var(--fg);color:#fff;border-color:var(--fg)}
+  main{position:relative;display:grid;place-items:center;overflow:hidden;cursor:grab;touch-action:none;transition:background-color 150ms}
+  main:active{cursor:grabbing}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+  .ctrl{display:inline-flex;align-items:center;gap:5px;color:var(--mut);white-space:nowrap}
+  .ctrl output{min-width:30px;text-align:right;color:var(--fg);font:11px/1 ui-monospace,Menlo,monospace}
+  .sep{width:1px;height:16px;background:var(--bd)}
+  input[type=range]{width:74px;accent-color:var(--fg);margin:0}
+  input[type=number]{width:46px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font:11px/1 ui-monospace,Menlo,monospace}
+  input[type=color]{width:22px;height:20px;padding:0;border:1px solid var(--bd);border-radius:3px;cursor:pointer}
+  input[type=checkbox]{accent-color:var(--fg);margin:0}
+  #file{display:none}
+  #readout{position:absolute;right:14px;bottom:10px;font:11px/1 ui-monospace,Menlo,monospace;color:var(--mut);pointer-events:none}
+  #drop{position:fixed;inset:14px;border:2px dashed #7f8fa6;border-radius:8px;display:none;place-items:center;background:#f4f6f9e8;font-size:16px;font-weight:500;pointer-events:none;z-index:10}
+</style></head><body>
+<header>
+  <div class="grp"><span class="title" id="title">Sprite in the Round</span><span class="meta" id="meta">Drop or paste a slice sheet PNG</span></div>
+  <div class="grp" role="group" aria-label="Mode">
+    <button data-mode="turntable" aria-pressed="true">Turntable</button>
+    <button data-mode="scan" aria-pressed="false">Slice scan</button>
+    <button data-mode="exploded" aria-pressed="false">Exploded</button>
+  </div>
+  <div class="grp">
+    <button id="spinBtn" title="Space">Pause</button>
+    <button id="exportBtn" title="Export 16-direction PNG sprite sheet">Export 16-dir</button>
+    <label class="btn" for="file">Load PNG</label><input id="file" type="file" accept="image/png">
+  </div>
+</header>
+<main id="stage"><canvas id="c"></canvas><div id="readout"></div></main>
+<footer>
+  <label class="ctrl">Squash <input id="sq" type="range" min="0.2" max="1" step="0.01" value="0.75"><output id="sqO">0.75</output></label>
+  <label class="ctrl">Spacing <input id="sp" type="range" min="0" max="3" step="0.05" value="1"><output id="spO">1.00</output></label>
+  <label class="ctrl">Zoom <input id="zm" type="range" min="1" max="20" step="1" value="8"><output id="zmO">8x</output></label>
+  <span class="sep"></span>
+  <label class="ctrl"><input id="lt" type="checkbox" checked> Light</label>
+  <label class="ctrl">Time <input id="tm" type="range" min="0" max="100" step="1" value="0"><output id="tmO">Day</output></label>
+  <label class="ctrl" title="Shift+drag on stage">Sun <input id="sn" type="range" min="0" max="360" step="1" value="42"><output id="snO">42°</output></label>
+  <label class="ctrl"><input id="sh" type="checkbox" checked> Shadow</label>
+  <label class="ctrl"><input id="ol" type="checkbox"> Outline <input id="oc" type="color" value="#181c24"></label>
+  <label class="ctrl">BG <input id="bgc" type="color" value="#e9e5dd"></label>
+  <span class="sep"></span>
+  <label class="ctrl">Slices <input id="cnt" type="number" min="1" value="1"></label>
+  <label class="ctrl">Frames <input id="frm" type="number" min="1" value="1"></label>
+  <label class="ctrl" id="animBox"><input id="play" type="checkbox" checked> FPS <input id="fps" type="number" min="1" max="60" value="8"></label>
+</footer>
+<div id="drop">Drop a slice sheet PNG</div>
+<script>
+const CONFIG = /*CONFIG*/null;
+const SHX = 0.5, SHY = 0.5, SHA = 70, EPS = 1e-6;
+const $ = i => document.getElementById(i);
+const cv = $('c'), ctx = cv.getContext('2d'), stage = $('stage');
+const off = document.createElement('canvas'), octx = off.getContext('2d');
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = v => v < 0 ? 0 : (v > 255 ? 255 : v | 0);
+
+let px = null, SW = 0, SD = 0, H = 0, NF = 1, vols = [], sheetImg = null, baseName = 'sprite';
+let mode = 'turntable', spinning = true, ang = 0.6, drag = null, last = performance.now(), clock = 0, phase = 0;
+
+// Parse PNG tEXt chunks (slices, frames, outline) written by voxlib.save_sheet()
+function readPngText(buf) {
+  const v = new DataView(buf), u = new Uint8Array(buf), out = {};
+  if (buf.byteLength < 8 || v.getUint32(0) !== 0x89504e47) return out;
+  for (let p = 8; p + 12 <= buf.byteLength;) {
+    const len = v.getUint32(p), tag = String.fromCharCode(u[p + 4], u[p + 5], u[p + 6], u[p + 7]);
+    if (tag === 'tEXt' && p + 8 + len <= buf.byteLength) {
+      let nul = p + 8; while (nul < p + 8 + len && u[nul] !== 0) nul++;
+      const k = new TextDecoder('latin1').decode(u.subarray(p + 8, nul));
+      out[k] = new TextDecoder('latin1').decode(u.subarray(nul + 1, p + 8 + len));
+    }
+    p += 12 + len;
+    if (tag === 'IEND') break;
+  }
+  return out;
+}
+
+// Precompute per-frame voxel volume: occupancy, RGB, 3D Sobel normals, upper AO, and auto-emissive mask
+function buildVolume(rgba, W, D, count, fr) {
+  const SWall = W * count, area = W * D, total = count * area;
+  const occ = new Uint8Array(total), rgb = new Uint8Array(total * 3);
+  const nx = new Float32Array(total), ny = new Float32Array(total), nz = new Float32Array(total);
+  const ao = new Float32Array(total), emis = new Uint8Array(total), surf = new Uint8Array(total);
+  for (let z = 0; z < count; z++) {
+    const zb = z * area;
+    for (let y = 0; y < D; y++) for (let x = 0; x < W; x++) {
+      const p = (((y + fr * D) * SWall) + z * W + x) * 4;
+      if (rgba[p + 3] < 128) continue;
+      const idx = zb + y * W + x;
+      occ[idx] = 1;
+      rgb[idx * 3] = rgba[p]; rgb[idx * 3 + 1] = rgba[p + 1]; rgb[idx * 3 + 2] = rgba[p + 2];
+    }
+  }
+  const at = (z, y, x) => (z >= 0 && z < count && y >= 0 && y < D && x >= 0 && x < W) ? occ[z * area + y * W + x] : 0;
+  const counts = new Map(); let surfN = 0;
+  for (let z = 0; z < count; z++) {
+    const zb = z * area;
+    for (let y = 0; y < D; y++) for (let x = 0; x < W; x++) {
+      const idx = zb + y * W + x; if (!occ[idx]) continue;
+      const xp = at(z, y, x + 1), xm = at(z, y, x - 1), yp = at(z, y + 1, x), ym = at(z, y - 1, x), zp = at(z + 1, y, x), zm = at(z - 1, y, x);
+      if (!(xp && xm && yp && ym && zp && zm)) {
+        surf[idx] = 1; surfN++;
+        const k = (rgb[idx * 3] << 16) | (rgb[idx * 3 + 1] << 8) | rgb[idx * 3 + 2];
+        counts.set(k, (counts.get(k) || 0) + 1);
+      }
+      const gx = (xm - xp) * 2 + (at(z, y - 1, x - 1) - at(z, y - 1, x + 1)) + (at(z, y + 1, x - 1) - at(z, y + 1, x + 1))
+        + (at(z + 1, y, x - 1) - at(z + 1, y, x + 1)) + (at(z - 1, y, x - 1) - at(z - 1, y, x + 1));
+      const gy = (ym - yp) * 2 + (at(z, y - 1, x - 1) - at(z, y + 1, x - 1)) + (at(z, y - 1, x + 1) - at(z, y + 1, x + 1))
+        + (at(z + 1, y - 1, x) - at(z + 1, y + 1, x)) + (at(z - 1, y - 1, x) - at(z - 1, y + 1, x));
+      const gz = (zm - zp) * 2 + (at(z - 1, y, x - 1) - at(z + 1, y, x - 1)) + (at(z - 1, y, x + 1) - at(z + 1, y, x + 1))
+        + (at(z - 1, y - 1, x) - at(z + 1, y - 1, x)) + (at(z - 1, y + 1, x) - at(z + 1, y + 1, x));
+      const mag = Math.hypot(gx, gy, gz);
+      if (mag > 1e-4) { nx[idx] = gx / mag; ny[idx] = gy / mag; nz[idx] = gz / mag; } else { nz[idx] = 1; }
+      const up = zp + at(z + 1, y - 1, x) + at(z + 1, y + 1, x) + at(z + 1, y, x - 1) + at(z + 1, y, x + 1);
+      ao[idx] = 1 - up * 0.04;
+    }
+  }
+  const dom = new Set();
+  if (surfN) for (const [k, c] of counts) if (c / surfN > 0.14) dom.add(k);
+  for (let i = 0; i < total; i++) {
+    if (!surf[i]) continue;
+    const r = rgb[i * 3], g = rgb[i * 3 + 1], b = rgb[i * 3 + 2];
+    if (dom.has((r << 16) | (g << 8) | b)) continue;
+    const luma = 0.299 * r + 0.587 * g + 0.114 * b, mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = (mx - mn) / (mx || 1);
+    if ((luma >= 180 && (sat >= 0.30 || luma >= 232)) || (mx >= 215 && sat >= 0.62 && luma >= 110)) emis[i] = 1;
+  }
+  return { W, D, H: count, area, occ, rgb, nx, ny, nz, ao, emis };
+}
+
+function getEnv(timeVal, sunDeg) {
+  const t = timeVal / 100, sunW = Math.max(0, 1 - Math.abs(t - 0.5) * 2.4), nightW = Math.max(0, (t - 0.48) / 0.52);
+  const elev = (t <= 0.5 ? lerp(56, 20, t * 2) : lerp(20, 40, (t - 0.5) * 2)) * Math.PI / 180;
+  const az = sunDeg * Math.PI / 180, ce = Math.cos(elev);
+  const shLen = Math.min(1.4, Math.max(0.32, (1 / Math.max(Math.tan(elev), 0.4)) * 0.48));
+  return {
+    lx: Math.cos(az) * ce, ly: Math.sin(az) * ce, lz: Math.sin(elev),
+    shDx: -Math.cos(az) * shLen, shDy: -Math.sin(az) * shLen,
+    emisGlow: Math.max(0, Math.min(1, (t - 0.32) / 0.42)), nightW,
+    shM: [lerp(lerp(0.78, 0.64, sunW), 0.26, nightW), lerp(lerp(0.82, 0.60, sunW), 0.30, nightW), lerp(lerp(0.92, 0.80, sunW), 0.46, nightW)],
+    mdM: [lerp(lerp(0.98, 1.00, sunW), 0.40, nightW), lerp(lerp(0.99, 0.87, sunW), 0.46, nightW), lerp(lerp(1.00, 0.84, sunW), 0.64, nightW)],
+    ltM: [lerp(lerp(1.10, 1.22, sunW), 0.60, nightW), lerp(lerp(1.08, 1.04, sunW), 0.68, nightW), lerp(lerp(1.03, 0.86, sunW), 0.88, nightW)],
+  };
+}
+
+// Symmetric pixel-center rasterizer (matches stack.py render() when lit=false; adds 3D normals/AO/cel/emissive when lit=true)
+function renderFrame(vol, a, s, g, shadow, oc, lit, env, maxZ, room) {
+  const { W, D, H: nTot, area, occ, rgb, nx, ny, nz, ao, emis } = vol;
+  const n = Math.max(1, Math.min(nTot, maxZ || nTot));
+  const pad = 2, diag = Math.ceil(Math.hypot(W, D)) + 2, gh = Math.max(1, Math.ceil(diag * s));
+  const lift = Math.floor((nTot - 1) * Math.max(g, room || g) + 0.5);
+  const sxPad = shadow ? (lit ? Math.ceil(nTot * Math.max(Math.abs(env.shDx), 0.5) * Math.max(g, 1)) : Math.ceil(nTot * SHX)) : 0;
+  const syPad = shadow ? (lit ? Math.ceil(nTot * Math.max(Math.abs(env.shDy), 0.5) * s * Math.max(g, 1)) : Math.ceil(nTot * SHY * s)) : 0;
+  const shL = (shadow && lit && env.shDx < 0) ? sxPad : 0, shR = (shadow && (!lit || env.shDx >= 0)) ? sxPad : 0;
+  const shT = (shadow && lit && env.shDy < 0) ? syPad : 0, shB = (shadow && (!lit || env.shDy >= 0)) ? syPad : 0;
+  const cw = diag + 2 * pad + shL + shR, ch = gh + lift + 2 * pad + shT + shB;
+  const cx = pad + shL + Math.floor((diag - W) / 2) + W / 2, base = ch - pad - shB - gh;
+  const cs = Math.cos(a), sn = Math.sin(a), map = new Int32Array(gh * cw);
+  for (let r = 0; r < gh; r++) {
+    const py = (r + 0.5 - gh / 2) / s;
+    for (let u = 0; u < cw; u++) {
+      const qx = u + 0.5 - cx;
+      const sx = Math.floor(qx * cs + py * sn + W / 2 + EPS), sy = Math.floor(-qx * sn + py * cs + D / 2 + EPS);
+      map[r * cw + u] = (sx >= 0 && sx < W && sy >= 0 && sy < D) ? sy * W + sx : -1;
+    }
+  }
+  const N = cw * ch, top = new Int32Array(N).fill(-1), sha = new Uint8Array(N), emM = new Uint8Array(N);
+  for (let z = 0; z < n; z++) {
+    const zb = z * area, r0 = base - Math.floor(z * g + 0.5);
+    const ox = lit ? Math.floor(z * g * env.shDx + 0.5) : Math.floor(z * SHX + 0.5);
+    const oy = lit ? Math.floor(z * g * env.shDy * s + 0.5) : Math.floor(z * SHY * s + 0.5);
+    for (let r = 0; r < gh; r++) {
+      const mr = r * cw, yr = r0 + r, syr = base + r + oy;
+      for (let u = 0; u < cw; u++) {
+        const m = map[mr + u]; if (m < 0) continue;
+        const vIdx = zb + m; if (!occ[vIdx]) continue;
+        if (yr >= 0 && yr < ch) top[yr * cw + u] = vIdx;
+        if (shadow && syr >= 0 && syr < ch && u + ox >= 0 && u + ox < cw) sha[syr * cw + u + ox] = 1;
+      }
+    }
+  }
+  const objLx = env.lx * cs + env.ly * sn, objLy = -env.lx * sn + env.ly * cs, objLz = env.lz;
+  const out = new Uint8ClampedArray(N * 4);
+  for (let i = 0; i < N; i++) {
+    const vIdx = top[i], q = i * 4;
+    if (vIdx >= 0) {
+      const p3 = vIdx * 3;
+      if (!lit) {
+        out[q] = rgb[p3]; out[q + 1] = rgb[p3 + 1]; out[q + 2] = rgb[p3 + 2]; out[q + 3] = 255; continue;
+      }
+      if (emis[vIdx] && env.emisGlow > 0.05) {
+        emM[i] = 1; const boost = 1 + env.emisGlow * 0.4;
+        out[q] = clamp(rgb[p3] * boost + env.emisGlow * 26);
+        out[q + 1] = clamp(rgb[p3 + 1] * boost + env.emisGlow * 22);
+        out[q + 2] = clamp(rgb[p3 + 2] * boost + env.emisGlow * 16);
+        out[q + 3] = 255; continue;
+      }
+      const ndl = nx[vIdx] * objLx + ny[vIdx] * objLy + nz[vIdx] * objLz, occA = ao[vIdx];
+      const M = ndl > 0.36 ? env.ltM : (ndl > -0.14 ? env.mdM : env.shM);
+      out[q] = clamp(rgb[p3] * M[0] * occA);
+      out[q + 1] = clamp(rgb[p3 + 1] * M[1] * occA);
+      out[q + 2] = clamp(rgb[p3 + 2] * M[2] * occA);
+      out[q + 3] = 255; continue;
+    }
+    if (oc) {
+      const x = i % cw;
+      if ((x > 0 && top[i - 1] >= 0) || (x < cw - 1 && top[i + 1] >= 0) || (i >= cw && top[i - cw] >= 0) || (i + cw < N && top[i + cw] >= 0)) {
+        out[q] = oc[0]; out[q + 1] = oc[1]; out[q + 2] = oc[2]; out[q + 3] = 255; continue;
+      }
+    }
+    if (sha[i]) out[q + 3] = SHA;
+  }
+  if (lit && env.emisGlow > 0.12) {
+    const ha = env.emisGlow * 0.45;
+    for (let y = 1; y < ch - 1; y++) for (let x = 1; x < cw - 1; x++) {
+      const i = y * cw + x; if (emM[i]) continue;
+      const src = emM[i - 1] ? i - 1 : emM[i + 1] ? i + 1 : emM[i - cw] ? i - cw : emM[i + cw] ? i + cw : -1;
+      if (src < 0) continue;
+      const sp = src * 4, dp = i * 4;
+      if (out[dp + 3] === 0) {
+        out[dp] = out[sp]; out[dp + 1] = out[sp + 1]; out[dp + 2] = out[sp + 2]; out[dp + 3] = Math.round(ha * 210);
+      } else {
+        out[dp] = clamp(out[dp] + out[sp] * ha); out[dp + 1] = clamp(out[dp + 1] + out[sp + 1] * ha); out[dp + 2] = clamp(out[dp + 2] + out[sp + 2] * ha);
+      }
+    }
+  }
+  return { width: cw, height: ch, data: out };
+}
+
+function rebuildVolumes() {
+  vols = [];
+  for (let f = 0; f < NF; f++) vols.push(buildVolume(px, SW, SD, H, f));
+  $('meta').textContent = `${H} slices · ${SW}×${SD}px` + (NF > 1 ? ` · ${NF} frames` : '');
+  $('animBox').style.display = NF > 1 ? 'inline-flex' : 'none';
+}
+
+function useSheet(img, count, frames, olHex) {
+  sheetImg = img;
+  if (frames) $('frm').value = frames;
+  if (olHex) { $('ol').checked = true; $('oc').value = olHex; }
+  const t = document.createElement('canvas'); t.width = img.width; t.height = img.height;
+  const x = t.getContext('2d'); x.drawImage(img, 0, 0);
+  px = x.getImageData(0, 0, img.width, img.height).data;
+  setCount(count || Math.max(1, Math.round(img.width * (+$('frm').value || 1) / img.height)));
+}
+
+function setCount(n) {
+  if (!sheetImg) return;
+  n = Math.max(1, n | 0);
+  const f = Math.max(1, +$('frm').value | 0);
+  if (sheetImg.width % n) { $('cnt').style.background = '#fbb'; return; }
+  if (sheetImg.height % f) { $('frm').style.background = '#fbb'; return; }
+  $('cnt').style.background = $('frm').style.background = '';
+  $('cnt').value = n; H = n; SW = sheetImg.width / n; NF = f; SD = sheetImg.height / f;
+  const ideal = Math.max(2, Math.min(14, Math.floor(Math.min(innerWidth, innerHeight) * 0.72 / (Math.hypot(SW, SD) + H * 1.4))));
+  $('zm').value = ideal; $('zmO').textContent = ideal + 'x';
+  rebuildVolumes();
+}
+
+function loadURL(url, count, frames, olHex) {
+  const im = new Image(); im.onload = () => useSheet(im, count, frames, olHex); im.src = url;
+}
+
+async function loadFile(f) {
+  if (!f || !f.type.startsWith('image/')) return;
+  baseName = (f.name || 'sprite').replace(/_slices\.png$|\.png$/i, '');
+  $('title').textContent = baseName;
+  const meta = readPngText(await f.arrayBuffer());
+  const ol = meta.outline && /^#[0-9a-f]{6}$/i.test(meta.outline) ? meta.outline : null;
+  loadURL(URL.createObjectURL(f), +meta.slices || 0, +meta.frames || 1, ol);
+}
+
+function updateBg(lit, timeVal) {
+  if (!lit || timeVal < 4) { stage.style.background = $('bgc').value; $('readout').style.color = 'var(--mut)'; return; }
+  const t = timeVal / 100;
+  let r, g, b;
+  if (t <= 0.5) { const u = t * 2; r = lerp(233, 232, u); g = lerp(229, 206, u); b = lerp(221, 190, u); }
+  else { const u = (t - 0.5) * 2; r = lerp(232, 16, u); g = lerp(206, 22, u); b = lerp(190, 38, u); }
+  stage.style.background = `rgb(${r | 0},${g | 0},${b | 0})`;
+  $('readout').style.color = t > 0.7 ? '#8b98b8' : 'var(--mut)';
+}
+
+function loop(t) {
+  const dt = Math.min(0.1, (t - last) / 1000); last = t;
+  if (spinning && !drag) { ang += dt * 0.85; phase += dt; }
+  if ($('play').checked) clock += dt;
+  const lit = $('lt').checked, tm = +$('tm').value, sun = +$('sn').value;
+  $('tmO').textContent = tm < 25 ? 'Day' : tm < 72 ? 'Sunset' : 'Night';
+  $('snO').textContent = sun + '°';
+  $('sqO').textContent = (+$('sq').value).toFixed(2);
+  $('spO').textContent = (+$('sp').value).toFixed(2);
+  $('zmO').textContent = $('zm').value + 'x';
+  updateBg(lit, tm);
+  if (vols.length) {
+    const fr = Math.floor(clock * (+$('fps').value || 8)) % NF;
+    const baseSp = +$('sp').value, sq = +$('sq').value, z = +$('zm').value;
+    const sp = mode === 'exploded' ? baseSp + (1 - Math.cos(phase * 1.8)) * 0.9 : baseSp;
+    const room = mode === 'exploded' ? baseSp + 1.8 : baseSp;
+    const maxZ = mode === 'scan' ? 1 + (Math.floor(phase * Math.max(8, H * 0.45)) % H) : H;
+    const oc = $('ol').checked ? hex($('oc').value) : null;
+    const im = renderFrame(vols[fr], ang, sq, sp, $('sh').checked, oc, lit, getEnv(tm, sun), maxZ, room);
+    if (off.width !== im.width || off.height !== im.height) { off.width = im.width; off.height = im.height; }
+    octx.putImageData(new ImageData(im.data, im.width, im.height), 0, 0);
+    if (cv.width !== im.width * z || cv.height !== im.height * z) { cv.width = im.width * z; cv.height = im.height * z; }
+    ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(off, 0, 0, cv.width, cv.height);
+    const deg = ((Math.round(ang * 180 / Math.PI) % 360) + 360) % 360;
+    $('readout').textContent = `${deg}°` + (mode === 'scan' ? ` · z ${maxZ}/${H}` : mode === 'exploded' ? ` · sp ${sp.toFixed(2)}` : '');
+  }
+  requestAnimationFrame(loop);
+}
+
+// Export 16-direction PNG sprite sheet (matches stack.py --dirs 16 convention)
+$('exportBtn').onclick = () => {
+  if (!vols.length) return;
+  const dirs = 16, sq = +$('sq').value, sp = +$('sp').value, lit = $('lt').checked;
+  const env = getEnv(+$('tm').value, +$('sn').value), oc = $('ol').checked ? hex($('oc').value) : null;
+  const cells = Array.from({ length: dirs }, (_, i) => {
+    const a = (i * 360 / dirs - 90) * Math.PI / 180;
+    return vols.map(v => renderFrame(v, a, sq, sp, false, oc, lit, env, H, sp));
+  });
+  const cw = cells[0][0].width, ch = cells[0][0].height;
+  const cols = NF === 1 ? 8 : NF, rows = NF === 1 ? 2 : dirs;
+  const out = document.createElement('canvas'); out.width = cols * cw; out.height = rows * ch;
+  const gx = out.getContext('2d');
+  for (let i = 0; i < dirs; i++) for (let f = 0; f < NF; f++) {
+    const r = NF === 1 ? (i >> 3) : i, c = NF === 1 ? (i & 7) : f;
+    const im = cells[i][f]; gx.putImageData(new ImageData(im.data, cw, ch), c * cw, r * ch);
+  }
+  const a = document.createElement('a'); a.download = baseName + '_dirs16.png'; a.href = out.toDataURL('image/png'); a.click();
+};
+
+document.querySelectorAll('button[data-mode]').forEach(b => b.onclick = () => {
+  mode = b.dataset.mode; phase = 0;
+  document.querySelectorAll('button[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === b));
+});
+$('spinBtn').onclick = () => { spinning = !spinning; $('spinBtn').textContent = spinning ? 'Pause' : 'Play'; };
+stage.onpointerdown = e => { drag = { x: e.clientX, a: ang, s: +$('sn').value, sun: e.shiftKey }; stage.setPointerCapture(e.pointerId); };
+stage.onpointermove = e => {
+  if (!drag) return;
+  if (drag.sun) $('sn').value = ((Math.round(drag.s + (e.clientX - drag.x) * 0.8) % 360) + 360) % 360;
+  else ang = drag.a + (e.clientX - drag.x) * 0.01;
+};
+stage.onpointerup = stage.onpointercancel = () => { drag = null; };
+onkeydown = e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowLeft') ang -= Math.PI / 8;
+  else if (e.key === 'ArrowRight') ang += Math.PI / 8;
+  else if (e.key === ' ') { e.preventDefault(); $('spinBtn').click(); }
+};
+$('cnt').onchange = () => setCount(+$('cnt').value);
+$('frm').onchange = () => setCount(+$('cnt').value);
+$('file').onchange = e => loadFile(e.target.files[0]);
+ondragover = e => { e.preventDefault(); $('drop').style.display = 'grid'; };
+ondragleave = () => { $('drop').style.display = 'none'; };
+ondrop = e => { e.preventDefault(); $('drop').style.display = 'none'; loadFile(e.dataTransfer.files[0]); };
+onpaste = e => { for (const it of e.clipboardData.items) if (it.type.startsWith('image/')) loadFile(it.getAsFile()); };
+
+if (CONFIG) {
+  baseName = CONFIG.name || 'sprite'; document.title = baseName + ' · Sprite in the Round'; $('title').textContent = baseName;
+  $('sq').value = CONFIG.squash; $('sp').value = CONFIG.spacing; $('bgc').value = CONFIG.bg;
+  $('sh').checked = CONFIG.shadow;
+  if (CONFIG.fps) $('fps').value = CONFIG.fps;
+  loadURL(CONFIG.src, CONFIG.count, CONFIG.frames || 1, CONFIG.outline || null);
+}
+requestAnimationFrame(loop);
+</script></body></html>
