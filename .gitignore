@@ -8,6 +8,21 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
+# Generated output
+/out/
+
+# Local agent directories
+/.agents/
+/.claude/
+/.codex/
+/.cursor/
+/.gemini/
+/.opencode/
+/.windsurf/
+
+# Local AWS configuration
+/.aws/
+
 # OS & Editors
 .DS_Store
 Thumbs.db
