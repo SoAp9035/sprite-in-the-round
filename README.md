@@ -27,15 +27,11 @@ The agent builds the shape as **horizontal pixel layers**. The same layers work 
 - as a **solid mesh** you can open in Blender or import into a game engine, and
 - as a **sprite stack** for fake-3D turning in a 2D game.
 
-```mermaid
-flowchart LR
-    A["Sprite, sheet,<br/>screenshot or description"] --> B["pixel_grid.py<br/>recover native pixels"]
-    B --> C["voxlib.py<br/>carve · sculpt · lathe"]
-    C --> D["Slice sheet"]
-    D --> E["stack.py"]
-    E --> F["GLB + OBJ<br/>PNG preview"]
-    E --> G["Direction sheets · GIF<br/>HTML viewer · .vox"]
-```
+<p align="center">
+  <img src="docs/pipeline.gif" width="855" alt="Pipeline: an input sprite goes through pixel_grid.py (native pixels), voxlib.py (horizontal slices) and stack.py (a turning stack exported as GLB, OBJ, VOX and GIF)">
+  <br />
+  <sub>The car from <code>evals/files</code>, run through each step. <code>stack.py</code> writes GLB + OBJ + a PNG preview for 3D tools, and direction sheets, a GIF, an HTML viewer and <code>.vox</code> for sprite stacking.</sub>
+</p>
 
 **What works best as input**
 
