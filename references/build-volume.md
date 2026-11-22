@@ -30,7 +30,7 @@ Run it with `uv run build.py`; the header makes uv install numpy and Pillow. Wit
 
 | function | does |
 |---|---|
-| `load(path)`, `save(img, path)`, `save_sheet(vol_or_frames, path, outline=None)`, `load_sheet(path, count, frames=1)` | file I/O, hard alpha; a list of volumes is an animation; `outline=` stores the silhouette outline colour for `stack.py --outline auto` |
+| `load(path)`, `save(img, path)`, `save_sheet(vol_or_frames, path, outline=None)`, `load_sheet(path, count=None, frames=None)` | file I/O, hard alpha; a list of volumes is an animation; `outline=` stores the silhouette outline colour for `stack.py --outline auto`; `load_sheet` reads the slice and frame counts `save_sheet` stored |
 | `crop(img)`, `fit(img, w, h)`, `hexrgb(s)`, `rgbhex(rgb)` | tight crop; nearest-neighbour resize; colour conversions |
 | `strip_outline(img, colour=None)` | → `(img, outline_rgb)`, with the silhouette outline recoloured from inside. Finds dark outlines; pass `colour=` for a light one. |
 | `strip_edge(img, width, colours=None)` | → `(img, rim_rgb)`, with the band at both ends of every row recoloured from inside: rim light, glass edges, backdrop seen at the sides |

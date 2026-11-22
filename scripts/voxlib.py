@@ -50,8 +50,15 @@ def save_sheet(vol, path, outline=None):
     save(sheet, path, meta)
 
 
-def load_sheet(path, count, frames=1):
-    """Volume from a slice sheet; with frames > 1, a list of volumes, one per row."""
+def load_sheet(path, count=None, frames=None):
+    """Volume from a slice sheet; with frames > 1, a list of volumes, one per row. count and
+    frames default to what save_sheet stored in the PNG."""
+    with Image.open(path) as im:
+        stored = {k: int(v) for k, v in im.info.items() if k in ("slices", "frames") and str(v).isdigit()}
+    count = count or stored.get("slices")
+    frames = frames or stored.get("frames", 1)
+    if not count:
+        raise ValueError(f"{path} doesn't store its slice count: pass count")
     s = load(path)
     w, h = s.shape[1] // count, s.shape[0] // frames
     vols = [np.stack([s[f * h:(f + 1) * h, i * w:(i + 1) * w] for i in range(count)]) for f in range(frames)]

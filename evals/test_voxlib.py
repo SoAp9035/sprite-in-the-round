@@ -11,8 +11,8 @@ import numpy as np
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-from voxlib import (blank, carve, crop, decal, facing, part_rows, save_sheet, sculpt, shade,  # noqa: E402
-                    shared_palette, stack_views, strip_outline, trim)
+from voxlib import (blank, carve, crop, decal, facing, load_sheet, part_rows, save_sheet, sculpt,  # noqa: E402
+                    shade, shared_palette, stack_views, strip_outline, trim)
 from stack import elevations, thin_runs  # noqa: E402
 
 RED, DRK, TYR, BARK, LEAF = (210, 40, 50), (40, 50, 70), (30, 30, 34), (110, 70, 40), (60, 150, 70)
@@ -202,6 +202,20 @@ class ThinPartTests(unittest.TestCase):
             save_sheet(posts(1), sheet)
             report = json.loads(subprocess.check_output([sys.executable, str(SCRIPTS / "stack.py"), str(sheet)]))
         self.assertTrue(any("1-px-thin" in w for w in report["warnings"]), report["warnings"])
+
+
+class SheetTests(unittest.TestCase):
+    def test_load_sheet_reads_the_stored_counts(self):
+        vol = posts(2)
+        with tempfile.TemporaryDirectory() as directory:
+            sheet = Path(directory) / "posts_slices.png"
+            save_sheet(vol, sheet)
+            np.testing.assert_array_equal(load_sheet(sheet), vol)
+            np.testing.assert_array_equal(load_sheet(sheet, vol.shape[0]), vol)
+            save_sheet([vol, vol[::-1]], sheet)
+            frames = load_sheet(sheet)
+            self.assertEqual(len(frames), 2)
+            np.testing.assert_array_equal(frames[1], vol[::-1])
 
 
 class StackViewsAndShadingTests(unittest.TestCase):

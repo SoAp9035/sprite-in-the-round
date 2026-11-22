@@ -73,6 +73,7 @@ The GLB and OBJ hold the same mesh: solid, flat-coloured faces with a small pale
 
 - **Carved colours on a character.** `carve` paints each wall from the nearest drawing, so on a rounded body the front and side drawings interleave, and their soft pixels and linework show as specks at 45°. Sculpt characters by parts and paint them flat.
 - **Thin parts.** 1-px parts are fine in the mesh but blink in a turning sprite stack.
+- **Front details carried round.** `lathe`, `inflate` and other one-view builds take their colours from the front picture, so its highlights, eyes and labels also land on the sides, seen edge-on, and with `inflate` on the back. Look at the flat side and back in the preview's last row and at the 90° and 180° turns, and paint those details out where they don't belong.
 - **Gaps inside a view.** Background fully enclosed by the drawing (between legs, ropes or fins) carves solid. Make it transparent, or cut it from the volume afterwards.
 - **Things sticking out of a wall.** A small sign or flower box in the side view carves a ledge along that whole wall. Paint it flat on the wall or add it as a separate part.
 - **Off-centre base.** The stack and the mesh origin use the middle of the bounding box, so a base that reaches further on one side makes the object orbit when turned. Centre the object, or pad the volume.
