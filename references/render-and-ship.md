@@ -4,7 +4,7 @@
 
 ```bash
 uv run scripts/stack.py obj_slices.png [--count H] [--outline '#1a1c2c'] [--squash 0.75] [--spacing 1]
-       [--frames F] [--fps 8] [--dirs 16] [--gif] [--viewer] [--vox] [--all] [--no-shadow] [--bg '#e9e5dd'] [-o OUTDIR]
+       [--frames F] [--fps 8] [--dirs 16] [--gif] [--vox] [--all] [--no-viewer] [--no-shadow] [--bg '#e9e5dd'] [-o OUTDIR]
 ```
 
 | output | what |
@@ -14,7 +14,7 @@ uv run scripts/stack.py obj_slices.png [--count H] [--outline '#1a1c2c'] [--squa
 | `NAME_preview.png` | always written. Rows 1–2: turns of 0, 45, … 315° (0° = front toward the camera); with `--frames`, one row of 8 turns per frame. Last row: flat front, side (front to the left), back and top views of the volume. |
 | `NAME_dirsN.png` | N facings, 8 per row, transparent, no shadow. Facing i points i·360/N° **clockwise from right** (screen y down). With `--frames`: one row per facing, one column per frame. Cell size is in the JSON. |
 | `NAME_turntable.gif` | 48 frames, on `--bg`, with shadow; with `--frames`, 96 frames that play the animation at `--fps` while turning |
-| `NAME_viewer.html` | self-contained: Turntable, Slice scan and Exploded modes; Live 3D normal-map + AO cel lighting (Day/Sunset/Night, `Shift+drag` sun orbit, auto-emissive glow) toggleable against raw unlit voxels; 1-px outline, shadow, squash, spacing, zoom, animation playback, and 16-direction PNG export |
+| `NAME_viewer.html` | written by default (`--no-viewer` skips it). Self-contained: Turntable, Slice scan and Exploded modes; Live 3D normal-map + AO cel lighting (Day/Sunset/Night, `Shift+drag` sun orbit, auto-emissive glow) toggleable against raw unlit voxels; 1-px outline, shadow, squash, spacing, zoom, animation playback, and 16-direction PNG export |
 | `NAME.vox` | MagicaVoxel model, surface voxels only, at most 256 per side (`NAME_fK.vox` per frame). MagicaVoxel opens it directly; Blender and Godot need an importer add-on. |
 
 Sheets written by `save_sheet` store their slice count, frame count, and optional `outline` colour in the PNG, so `--count`, `--frames`, and `--outline` (which defaults to `auto`, using the stored outline if present; pass `--outline none` to disable) are picked up automatically. The JSON also reports `warnings`: empty bottom or top slices, half-transparent pixels, stray parts not touching the body, 1-px-thin parts that blink in a turning stack, too many colours, and a too-tall stack. `assets/viewer.html` works standalone too: open it and drop or paste any slice sheet PNG (it reads stored `slices`, `frames` and `outline` metadata automatically).

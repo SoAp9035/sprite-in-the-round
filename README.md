@@ -5,7 +5,7 @@
 **Turn pixel-art sprites into 3D models with your AI agent.**
 
 Give an agent a sprite, an object turnaround or a directional character sheet.<br />
-It builds a coloured voxel volume and delivers a **GLB**, an **OBJ** and a PNG preview.
+It builds a coloured voxel volume and delivers a **GLB**, an **OBJ**, a slice sheet, a PNG preview and an HTML viewer.
 
 ![Agent Skill](https://img.shields.io/badge/Agent_Skill-SKILL.md-6e56cf?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776ab?style=flat-square&logo=python&logoColor=white)
@@ -30,7 +30,7 @@ The agent builds the shape as **horizontal pixel layers**. The same layers work 
 <p align="center">
   <img src="docs/pipeline.gif" width="855" alt="Pipeline: an input sprite goes through pixel_grid.py (native pixels), voxlib.py (horizontal slices) and stack.py (a turning stack exported as GLB, OBJ, VOX and GIF)">
   <br />
-  <sub>The car from <code>evals/files</code>, run through each step. <code>stack.py</code> writes GLB + OBJ + a PNG preview for 3D tools, and direction sheets, a GIF, an HTML viewer and <code>.vox</code> for sprite stacking.</sub>
+  <sub>The car from <code>evals/files</code>, run through each step. <code>stack.py</code> writes GLB + OBJ, a PNG preview and an HTML viewer, plus optional direction sheets, a GIF and <code>.vox</code> for sprite stacking.</sub>
 </p>
 
 **What works best as input**
@@ -128,9 +128,9 @@ Adapted from the skill's [evals](evals/evals.json):
 
 | You say | You get |
 |---|---|
-| *"I took a screenshot of my potion sprite in my pixel editor. It's 64x64. Can you turn it into a 3D thing I can spin around?"* | Grid recovered from the screenshot, then a GLB, OBJ and preview |
+| *"I took a screenshot of my potion sprite in my pixel editor. It's 64x64. Can you turn it into a 3D thing I can spin around?"* | Grid recovered from the screenshot, then a GLB, OBJ, slice sheet, preview and viewer |
 | *"Here are the top and side views of my little car. I need 16 direction sprites for my top-down racer in Godot."* | Art brought to native size, a carved volume, the slice sheet and a 16-direction sheet |
-| *"Make this mushroom guy 3D."* | A model with inferred depth and back, plus GLB, OBJ and preview |
+| *"Make this mushroom guy 3D."* | A model with inferred depth and back, plus GLB, OBJ, slice sheet, preview and viewer |
 | *"Can you make me a sprite-stacked wooden treasure chest, about 24 px wide, for my top-down game? I don't have any art."* | A slice sheet designed from scratch |
 | *"I need a street lamp for my top-down sprite-stacking game, about 40 px tall, and the same lamp as an .obj for Blender."* | A slice sheet for the game plus GLB and OBJ |
 
@@ -164,8 +164,8 @@ save_sheet(trim(volume), "car_slices.png", outline=outline)
 
 ```bash
 uv run build.py
-uv run scripts/stack.py car_slices.png          # car.glb, car.obj (+ .mtl, palette), car_preview.png
-uv run scripts/stack.py car_slices.png --all    # + 16-direction sheet, turntable GIF, HTML viewer, .vox
+uv run scripts/stack.py car_slices.png          # car.glb, car.obj (+ .mtl, palette), car_preview.png, car_viewer.html
+uv run scripts/stack.py car_slices.png --all    # + 16-direction sheet, turntable GIF, .vox
 ```
 
 <details>
@@ -178,7 +178,7 @@ uv run scripts/stack.py car_slices.png --all    # + 16-direction sheet, turntabl
 | `NAME_preview.png` | Eight turns of the stack, then flat front, side, back and top views. |
 | `NAME_dirsN.png` | `--dirs N`: N facings for a 2D game. |
 | `NAME_turntable.gif` | `--gif`: a turning (and animating) preview. |
-| `NAME_viewer.html` | `--viewer`: self-contained, drag-to-turn viewer. |
+| `NAME_viewer.html` | Self-contained, drag-to-turn viewer (`--no-viewer` skips it). |
 | `NAME.vox` | `--vox`: MagicaVoxel model. |
 
 See [render-and-ship.md](references/render-and-ship.md) for every option.

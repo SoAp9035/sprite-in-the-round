@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "I took a screenshot of my potion sprite in my pixel editor (evals/files/editor_shot.png). It's 64x64. Can you turn it into a 3D thing I can spin around?",
-      "expected_output": "Recovers the 64x64 art from the 800x546 screenshot (about 6.84 screen px per art px; ignores the UI and checkerboard) instead of stacking the screenshot. Builds a round volume about 57 slices tall (lathe or equivalent) with the outline stripped and redrawn once; the label and highlight stay on the front or the back is repainted. Delivers a static GLB and preview, and says which method was used and what was invented.",
+      "expected_output": "Recovers the 64x64 art from the 800x546 screenshot (about 6.84 screen px per art px; ignores the UI and checkerboard) instead of stacking the screenshot. Builds a round volume about 57 slices tall (lathe or equivalent) with the outline stripped and redrawn once; the label and highlight stay on the front or the back is repainted. Delivers a static GLB, OBJ, slice sheet, preview and HTML viewer, and says which method was used and what was invented.",
       "files": ["evals/files/editor_shot.png"]
     },
     {

@@ -111,7 +111,7 @@ save_sheet(trim(volume), "object_slices.png", outline=outline)
 
 ```bash
 uv run build.py
-uv run scripts/stack.py object_slices.png --viewer --dirs 16
+uv run scripts/stack.py object_slices.png --dirs 16
 ```
 
 Compare the preview's flat views with the originals, especially the nose and any off-centre rear markings. Open `object_viewer.html` to inspect the rotation and layer spacing. Use `object_slices.png` for live stacking or `object_dirs16.png` for baked directions.

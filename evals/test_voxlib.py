@@ -231,16 +231,17 @@ class StackViewsAndShadingTests(unittest.TestCase):
             sheet = Path(directory) / "car_slices.png"
             save_sheet(trim(vol), sheet, outline=outline)
             rep_auto = json.loads(subprocess.check_output([
-                sys.executable, str(SCRIPTS / "stack.py"), str(sheet), "--viewer",
+                sys.executable, str(SCRIPTS / "stack.py"), str(sheet),
             ]))
             self.assertEqual(rep_auto["render"]["outline"], "#0f0f14")
             viewer_html = Path(rep_auto["files"]["viewer"]).read_text(encoding="utf-8")
             for needle in ('data-mode="scan"', 'data-mode="exploded"', 'id="exportBtn"', 'buildVolume', '"outline": "#0f0f14"'):
                 self.assertIn(needle, viewer_html)
             rep_none = json.loads(subprocess.check_output([
-                sys.executable, str(SCRIPTS / "stack.py"), str(sheet), "--outline", "none",
+                sys.executable, str(SCRIPTS / "stack.py"), str(sheet), "--outline", "none", "--no-viewer",
             ]))
             self.assertEqual(rep_none["render"]["outline"], "none")
+            self.assertNotIn("viewer", rep_none["files"])
 
     def test_shade_cool_hue_shift_and_neutral_mode(self):
         vol = np.zeros((6, 6, 6, 4), np.uint8)

@@ -21,14 +21,14 @@ writes (next to the sheet unless -o):
   NAME_dirsN.png      --dirs N: N facings, frame i faces i*360/N deg clockwise from right
                       (8 per row; with frames, one row per facing and one column per frame)
   NAME_turntable.gif  --gif (with frames, it plays the animation while turning)
-  NAME_viewer.html    --viewer: self-contained, drag to turn, plays frames
+  NAME_viewer.html    self-contained, drag to turn, plays frames (unless --no-viewer)
   NAME.vox            --vox: MagicaVoxel model (max 256 per side); NAME_fK.vox per frame
-  --all = --dirs 16 --gif --viewer --vox
+  --all = --dirs 16 --gif --vox
 
 examples:
   stack.py car_slices.png --count 15
   stack.py car_slices.png --count 15 --outline '#14182e' --all
-  stack.py cat_walk_slices.png --count 18 --frames 4 --fps 8 --gif --viewer
+  stack.py cat_walk_slices.png --count 18 --frames 4 --fps 8 --gif
 
 Prints one JSON object on stdout: sizes, files and warnings worth acting on.
 Exit codes: 0 ok, 2 bad arguments.
@@ -302,14 +302,15 @@ def main():
     ap.add_argument("--bg", default="#e9e5dd", help="background of preview/gif/viewer")
     ap.add_argument("--dirs", type=int, default=0, help="write an N-direction sheet (8, 16, 32 ...)")
     ap.add_argument("--gif", action="store_true", help="write a 48-frame turntable GIF")
-    ap.add_argument("--viewer", action="store_true", help="write a drag-to-turn HTML viewer")
+    ap.add_argument("--viewer", action="store_true", help=argparse.SUPPRESS)   # default now; kept for old commands
+    ap.add_argument("--no-viewer", action="store_true", help="skip the drag-to-turn HTML viewer")
     ap.add_argument("--vox", action="store_true", help="write a MagicaVoxel .vox")
     ap.add_argument("--no-obj", action="store_true", help="skip the .obj/.mtl/_palette.png next to the .glb")
     ap.add_argument("--height", type=float, help="mesh height in metres, e.g. 1.6 for a person "
                                                  "(default: 16 art pixels per metre)")
     ap.add_argument("--ppm", type=float, default=16, help="art pixels per metre in the mesh (16); "
                                                           "keep one value across a set of props")
-    ap.add_argument("--all", action="store_true", help="--dirs 16 --gif --viewer --vox")
+    ap.add_argument("--all", action="store_true", help="--dirs 16 --gif --vox")
     ap.add_argument("--scale", type=int, default=0, help="preview/gif pixel scale (auto: preview about 1600 px wide)")
     a = ap.parse_args()
 
@@ -352,7 +353,7 @@ def main():
     vols = [np.stack([sheet[f * D:(f + 1) * D, z * W:(z + 1) * W] for z in range(H)]) for f in range(F)]
     vol = vols[0]
     if a.all:
-        a.dirs, a.gif, a.viewer, a.vox = a.dirs or 16, True, True, True
+        a.dirs, a.gif, a.vox = a.dirs or 16, True, True
     if a.outline == "auto":
         outline_str = stored_outline or "none"
     elif a.outline in ("none", "", None):
@@ -451,7 +452,7 @@ def main():
                   .quantize(256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE) for i in range(n)]
         frames[0].save(f("_turntable.gif"), save_all=True, append_images=frames[1:], duration=60, loop=0, disposal=2)
         files["gif"] = os.path.abspath(f("_turntable.gif"))
-    if a.viewer:
+    if not a.no_viewer:
         tpl = os.path.join(HERE, "..", "assets", "viewer.html")
         if not os.path.isfile(tpl):
             fail(f"viewer template missing: {tpl}")
